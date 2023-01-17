@@ -1,7 +1,8 @@
 import sensors/bindings
-export SensorFeatureKind, SensorSubfeatureKind
 
-checkErr sensors_init(nil)
+import std/dynlib
+
+export SensorFeatureKind, SensorSubfeatureKind
 
 type
   SensorFeature* = object
@@ -10,6 +11,22 @@ type
   SensorSubfeature* = object
     subfeature: SensorSubfeaturePtr
     chip: SensorChip
+  SensorsException* = object of ValueError
+    errCode*: int
+
+proc newSensorsException*(err: int, msg = ""): ref SensorsException =
+  new(result)
+  result.errCode = err
+  result.msg = msg & " with error code " & $err
+
+template checkErr*(body: untyped): untyped =
+  let err = body
+  if err != 0:
+    raise newSensorsException(err, "sensors failed")
+
+proc init*() =
+  initLib()
+  checkErr sensors_init(nil)
 
 proc name*(chip: SensorChip): string =
   result.setLen 255
@@ -66,6 +83,5 @@ proc kind*(subfeature: SensorSubFeature): SensorSubfeatureKind =
   subfeature.subfeature.kind
 
 proc value*(subfeature: SensorSubfeature): float64 =
-  discard sensors_get_value(subfeature.chip, subfeature.subfeature.number, result)
-
+  checkErr sensors_get_value(subfeature.chip, subfeature.subfeature.number, result)
 

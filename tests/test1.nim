@@ -2,6 +2,8 @@ import unittest
 
 import sensors
 
+init()
+
 test "chips":
   for chip in chips():
     echo chip.name, ": ", chip.prefix

@@ -1,3 +1,4 @@
+import std/dynlib
 
 const libSensors = "libsensors.so"
 
@@ -42,53 +43,40 @@ type
     kind*: SensorSubfeatureKind
     mapping*: int32
     flags*: uint32
-  SensorsException* = object of ValueError
-    errCode*: int
 
-proc sensors_init*(p: typeof(nil)): int {.cdecl, dynlib: libSensors,
-    importc: "sensors_init".}
+var sensors_init*: proc(p: typeof(nil)): int {.cdecl.}
+var sensors_get_detected_chips*: proc(p: SensorChip,
+    nr: var int): SensorChip {.cdecl.}
+var sensors_snprintf_chip_name*: proc(buf: pointer, size: int,
+    chip: SensorChip): int {.cdecl.}
+var sensors_get_features*: proc(chip: SensorChip,
+    fnr: var int): SensorFeaturePtr {.cdecl.}
+var sensors_get_label*: proc(chip: SensorChip,
+    feature: SensorFeaturePtr): cstring {.cdecl.}
+var sensors_get_subfeature*: proc(chip: SensorChip, feature: SensorFeaturePtr,
+    kind: SensorSubfeatureKind): SensorSubfeaturePtr {.cdecl.}
+var sensors_get_value*: proc(chip: SensorChip, nr: int,
+    value: var float64): int {.cdecl.}
 
-proc sensors_get_detected_chips*(p: SensorChip,
-    nr: var int): SensorChip {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_detected_chips".}
+template setProc(name: untyped) =
+  name = cast[typeof(name)](lib.symAddr(name.astToStr))
+  doAssert name != nil
 
-proc sensors_snprintf_chip_name*(buf: pointer, size: int,
-    chip: SensorChip): int {.cdecl, dynlib: libSensors,
-    importc: "sensors_snprintf_chip_name".}
-
-proc sensors_get_features*(chip: SensorChip,
-    fnr: var int): SensorFeaturePtr {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_features".}
-
-proc sensors_get_label*(chip: SensorChip,
-    feature: SensorFeaturePtr): cstring {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_label".}
-
-proc sensors_get_subfeature*(chip: SensorChip,
-    feature: SensorFeaturePtr): cstring {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_label".}
-
-proc sensors_get_subfeature*(chip: SensorChip, feature: SensorFeaturePtr,
-    kind: SensorSubfeatureKind): SensorSubfeaturePtr {.cdecl,
-        dynlib: libSensors,
-    importc: "sensors_get_subfeature".}
-
-proc sensors_get_value*(chip: SensorChip, nr: int,
-    value: var float64): int {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_value".}
-
-proc newSensorsException*(err: int, msg = ""): ref SensorsException =
-  new(result)
-  result.errCode = err
-  result.msg = msg & " with error code " & $err
-
-template checkErr*(body: untyped): untyped =
-  let err = body
-  if err != 0:
-    raise newSensorsException(err, "sensors failed")
+proc initLib*() =
+  let lib = loadLib(libSensors)
+  if lib == nil:
+    raise newException(LibraryError, libSensors)
+  setProc(sensors_init)
+  setProc(sensors_get_detected_chips)
+  setProc(sensors_snprintf_chip_name)
+  setProc(sensors_get_features)
+  setProc(sensors_get_label)
+  setProc(sensors_get_subfeature)
+  setProc(sensors_get_value)
 
 when isMainModule:
-  checkErr sensors_init(nil)
+  initLib()
+  discard sensors_init(nil)
   var nr = 0
   var buf = ""
   while true:
