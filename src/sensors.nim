@@ -86,7 +86,8 @@ proc kind*(subfeature: SensorSubFeature): SensorSubfeatureKind =
   subfeature.subfeature.kind
 
 proc value*(subfeature: SensorSubfeature): float64 =
-  checkErr sensors_get_value(subfeature.chip, subfeature.subfeature.number, result)
+  if 0 > sensors_get_value(subfeature.chip, subfeature.subfeature.number, result):
+    raise newSensorsException(1, "sensors value failed")
 
 proc cpuTemp*(): float64 =
   echo chipWithPrefix("coretemp").feature(FeatureTemp).subfeature(
