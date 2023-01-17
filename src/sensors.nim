@@ -1,112 +1,71 @@
+import sensors/bindings
+export SensorFeatureKind, SensorSubfeatureKind
 
-const libSensors = "libsensors.so"
-
+checkErr sensors_init(nil)
 
 type
-  Bus = object
-    typ, nr: int16
-  SensorChip = ptr object
-    prefix: cstring
-    bus: Bus
-    addrr: int32
-    path: cstring
-  SensorFeatureKind {.size: sizeof(cint), pure.} = enum
-    FeatureIn = 0x00
-    FeatureFan = 0x01
-    FeatureTemp = 0x02
-    FeaturePower = 0x03
-    FeatureEnergy = 0x04
-    FeatureCurr = 0x05
-    FeatureHumidity = 0x06
-    FeatureMaxMain = 0x07
-    FeatureVid = 0x10
-    FeatureIntrusion = 0x11
-    FeatureMaxOther = 0x12
-    FeatureBeepEnable = 0x18
-    FeatureMax = 0x19
-  SensorSubfeatureKind {.size: sizeof(cint), pure.} = enum
-    SubfeatureTempInput = int(FeatureTemp) shl 8
-  SensorFeature = ptr object
-    name: cstring
-    number: int32
-    kind: SensorFeatureKind
-    first_subfeature: int32
-    padding1: int32
-  SensorSubfeature = ptr object
-    name: cstring
-    number: int32
-    kind: SensorSubfeatureKind
-    mapping: int32
-    flags: uint32
-  SensorsException* = object of ValueError
-    errCode*: int
+  SensorFeature* = object
+    feature: SensorFeaturePtr
+    chip: SensorChip
+  SensorSubfeature* = object
+    subfeature: SensorSubfeaturePtr
+    chip: SensorChip
 
-proc sensors_init(p: typeof(nil)): int {.cdecl, dynlib: libSensors,
-    importc: "sensors_init".}
+proc name*(chip: SensorChip): string =
+  result.setLen 255
+  result.setLen sensors_snprintf_chip_name(result[0].addr, len(result), chip)
 
-proc sensors_get_detected_chips*(p: typeof(nil),
-    nr: var int): SensorChip {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_detected_chips".}
+iterator chips*(): SensorChip =
+  var n = 0
+  while true:
+    let chip = sensors_get_detected_chips(nil, n)
+    if chip == nil:
+      break
+    yield chip
 
-proc sensors_snprintf_chip_name*(buf: pointer, size: int,
-    chip: SensorChip): int {.cdecl, dynlib: libSensors,
-    importc: "sensors_snprintf_chip_name".}
+proc chipWithPrefix*(prefix: string): SensorChip =
+  for chip in chips():
+    if chip.prefix == prefix:
+      return chip
+  raise newException(KeyError, "chip with prefix `" & prefix & "` not found")
 
-proc sensors_get_features*(chip: SensorChip,
-    fnr: var int): SensorFeature {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_features".}
+proc name*(feature: SensorFeature): cstring =
+  feature.feature.name
 
-proc sensors_get_label*(chip: SensorChip,
-    feature: SensorFeature): cstring {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_label".}
+proc kind*(feature: SensorFeature): SensorFeatureKind =
+  feature.feature.kind
 
-proc sensors_get_subfeature*(chip: SensorChip,
-    feature: SensorFeature): cstring {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_label".}
+proc label*(feature: SensorFeature): cstring =
+  return sensors_get_label(feature.chip, feature.feature)
 
-proc sensors_get_subfeature*(chip: SensorChip, feature: SensorFeature,
-    kind: SensorSubfeatureKind): SensorSubfeature {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_subfeature".}
+iterator features*(chip: SensorChip): SensorFeature =
+  var n = 0
+  while true:
+    let feature = sensors_get_features(chip, n)
+    if feature == nil:
+      break
+    yield SensorFeature(feature: feature, chip: chip)
 
-proc sensors_get_value(chip: SensorChip, nr: int,
-    value: var float64): int {.cdecl, dynlib: libSensors,
-    importc: "sensors_get_value".}
+proc feature*(chip: SensorChip, kind: SensorFeatureKind): SensorFeature =
+  for feature in chip.features():
+    if feature.kind == kind:
+      return feature
+  raise newException(KeyError, "feature with kind `" & $kind & "` not found")
 
-proc newSensorsException*(err: int, msg = ""): ref SensorsException =
-  new(result)
-  result.errCode = err
-  result.msg = msg & " with error code " & $err
+proc subfeature*(feature: SensorFeature,
+    kind: SensorSubfeatureKind): SensorSubfeature =
+  result.subfeature = sensors_get_subfeature(feature.chip, feature.feature, kind)
+  if result.subfeature == nil:
+    raise newException(KeyError, "subfeature with kind `" & $kind & "` not found")
+  result.chip = feature.chip
 
-template checkErr*(body: untyped): untyped =
-  let err = body
-  if err != 0:
-    raise newSensorsException(err, "sensors failed")
+proc name*(subfeature: SensorSubfeature): cstring =
+  subfeature.subfeature.name
 
-when isMainModule:
-  proc main() =
-    checkErr sensors_init(nil)
-    var nr = 0
-    var buf = ""
-    while true:
-      let chip = sensors_get_detected_chips(nil, nr)
-      if chip == nil:
-        break
-      buf.setLen 255
-      buf.setLen sensors_snprintf_chip_name(buf[0].addr, len(buf), chip)
-      echo buf, ": ", chip.prefix
-      var fnr = 0
-      while true:
-        let f = sensors_get_features(chip, fnr)
-        if f == nil:
-          break
-        let label = sensors_get_label(chip, f)
-        echo "  ", f.name, " type: ", f.kind, " label: ", $label
-        let sf = sensors_get_subfeature(chip, f, SubfeatureTempInput)
-        if sf == nil:
-          continue
-        var value: float64
-        discard sensors_get_value(chip, sf.number, value)
-        echo "     ", sf.number, ": ", sf.name, ": ", value, " type: ", sf.kind
+proc kind*(subfeature: SensorSubFeature): SensorSubfeatureKind =
+  subfeature.subfeature.kind
 
-  main()
+proc value*(subfeature: SensorSubfeature): float64 =
+  discard sensors_get_value(subfeature.chip, subfeature.subfeature.number, result)
+
 
