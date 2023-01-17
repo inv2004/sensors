@@ -1,6 +1,7 @@
 import sensors/bindings
 
 import std/dynlib
+import system/ansi_c
 
 export SensorFeatureKind, SensorSubfeatureKind
 
@@ -52,8 +53,10 @@ proc name*(feature: SensorFeature): cstring =
 proc kind*(feature: SensorFeature): SensorFeatureKind =
   feature.feature.kind
 
-proc label*(feature: SensorFeature): cstring =
-  return sensors_get_label(feature.chip, feature.feature)
+proc label*(feature: SensorFeature): string =
+  var cstr = sensors_get_label(feature.chip, feature.feature)
+  result = $cstr
+  c_free(cstr)
 
 iterator features*(chip: SensorChip): SensorFeature =
   var n = 0
@@ -84,4 +87,12 @@ proc kind*(subfeature: SensorSubFeature): SensorSubfeatureKind =
 
 proc value*(subfeature: SensorSubfeature): float64 =
   checkErr sensors_get_value(subfeature.chip, subfeature.subfeature.number, result)
+
+proc cpuTemp*(): float64 =
+  echo chipWithPrefix("coretemp").feature(FeatureTemp).subfeature(
+      SubfeatureTempInput).value
+
+proc sddTemp*(): float64 =
+  echo chipWithPrefix("nvme").feature(FeatureTemp).subfeature(
+      SubfeatureTempInput).value
 
