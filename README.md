@@ -1,7 +1,7 @@
 # sensors
 [libsensors](https://github.com/lm-sensors/lm-sensors) wrapper
 
--[x] dynamic load and check of libsensors.so
+- [x] dynamic load and check of libsensors.so
 
 #### Example
 https://github.com/inv2004/sensors/blob/main/examples/dump.nim
