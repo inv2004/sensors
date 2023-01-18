@@ -87,13 +87,13 @@ proc kind*(subfeature: SensorSubFeature): SensorSubfeatureKind =
 
 proc value*(subfeature: SensorSubfeature): float64 =
   if sensors_get_value(subfeature.chip, subfeature.subfeature.number, result) < 0:
-    raise newSensorsException(1, "sensors value failed")
+    raise newException(ValueError, "sensor value failed")
 
 proc cpuTemp*(): float64 =
   chipWithPrefix("coretemp").feature(FeatureTemp).subfeature(
       SubfeatureTempInput).value
 
-proc ssdTemp*(): float64 =
+proc nvmeTemp*(): float64 =
   chipWithPrefix("nvme").feature(FeatureTemp).subfeature(
       SubfeatureTempInput).value
 
