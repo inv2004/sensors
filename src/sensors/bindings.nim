@@ -105,6 +105,8 @@ var sensors_get_label*: proc(chip: SensorChip,
     feature: SensorFeaturePtr): cstring {.cdecl.}
 var sensors_get_subfeature*: proc(chip: SensorChip, feature: SensorFeaturePtr,
     kind: SensorSubfeatureKind): SensorSubfeaturePtr {.cdecl.}
+var sensors_get_all_subfeatures*: proc(chip: SensorChip,
+    feature: SensorFeaturePtr, nr: var int): SensorSubfeaturePtr {.cdecl.}
 var sensors_get_value*: proc(chip: SensorChip, nr: int,
     value: var float64): int {.cdecl.}
 
@@ -122,32 +124,5 @@ proc initLib*() =
   setProc(sensors_get_features)
   setProc(sensors_get_label)
   setProc(sensors_get_subfeature)
+  setProc(sensors_get_all_subfeatures)
   setProc(sensors_get_value)
-
-when isMainModule:
-  initLib()
-  discard sensors_init(nil)
-  var nr = 0
-  var buf = ""
-  while true:
-    let chip = sensors_get_detected_chips(nil, nr)
-    if chip == nil:
-      break
-    buf.setLen 255
-    buf.setLen sensors_snprintf_chip_name(buf[0].addr, len(buf), chip)
-    echo buf, ": ", chip.prefix
-    var fnr = 0
-    while true:
-      let f = sensors_get_features(chip, fnr)
-      if f == nil:
-        break
-      let label = sensors_get_label(chip, f)
-      echo "  ", f.name, " type: ", f.kind, " label: ", $label
-      let sf = sensors_get_subfeature(chip, f, SubfeatureTempInput)
-      if sf == nil:
-        continue
-      var value: float64
-      discard sensors_get_value(chip, sf.number, value)
-      echo "     ", sf.number, ": ", sf.name, ": ", value, " type: ", sf.kind
-
-

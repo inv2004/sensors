@@ -66,6 +66,9 @@ iterator features*(chip: SensorChip): SensorFeature =
       break
     yield SensorFeature(feature: feature, chip: chip)
 
+iterator items*(chip: SensorChip): SensorFeature =
+  for f in chip.features(): yield f
+
 proc feature*(chip: SensorChip, kind: SensorFeatureKind): SensorFeature =
   for feature in chip.features():
     if feature.kind == kind:
@@ -78,6 +81,17 @@ proc subfeature*(feature: SensorFeature,
   if result.subfeature == nil:
     raise newException(KeyError, "subfeature with kind `" & $kind & "` not found")
   result.chip = feature.chip
+
+iterator subfeatures*(feature: SensorFeature): SensorSubfeature =
+  var n = 0
+  while true:
+    let subfeature = sensors_get_all_subfeatures(feature.chip, feature.feature, n)
+    if subfeature == nil:
+      break
+    yield SensorSubfeature(subfeature: subfeature, chip: feature.chip)
+
+iterator items*(feature: SensorFeature): SensorSubFeature =
+  for sf in feature.subfeatures(): yield sf
 
 proc name*(subfeature: SensorSubfeature): cstring =
   subfeature.subfeature.name
