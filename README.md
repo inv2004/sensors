@@ -15,7 +15,7 @@ init()
 for chip in chips():
   echo fmt"{chip.name}: {chip.prefix}"
   for feature in chip:
-    echo fmt"  {feature.label} ({feature.kind}):"
+    echo fmt"  {feature.label} ({feature.kind})"
     for subfeature in feature:
       echo fmt"    {subfeature.name}: {subfeature.value} ({subfeature.kind})"
 ```
