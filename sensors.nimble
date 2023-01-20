@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.2.2"
+version       = "0.2.3"
 author        = "inv2004"
 description   = "libsensors wrapper"
 license       = "MIT"
