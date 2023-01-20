@@ -6,6 +6,20 @@
 #### Example
 https://github.com/inv2004/sensors/blob/main/examples/dump.nim
 
+```nim
+import sensors
+import strformat
+
+init()
+
+for chip in chips():
+  echo fmt"{chip.name}: {chip.prefix}"
+  for feature in chip:
+    echo fmt"  {feature.label} ({feature.kind}):"
+    for subfeature in feature:
+      echo fmt"    {subfeature.name}: {subfeature.value} ({subfeature.kind})"
+```
+
 ```bash
 coretemp-isa-0000: coretemp
   Package id 0: 40.0
