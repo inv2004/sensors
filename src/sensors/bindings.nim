@@ -1,6 +1,6 @@
 import std/dynlib
 
-const libSensors = "libsensors.so"
+const libSensorsPattern = "libsensors.(so|so.5)"
 
 type
   Bus* = object
@@ -115,9 +115,9 @@ template setProc(name: untyped) =
   doAssert name != nil
 
 proc initLib*() =
-  let lib = loadLib(libSensors)
+  let lib = loadLibPattern(libSensorsPattern)
   if lib == nil:
-    raise newException(LibraryError, libSensors)
+    raise newException(LibraryError, libSensorsPattern)
   setProc(sensors_init)
   setProc(sensors_get_detected_chips)
   setProc(sensors_snprintf_chip_name)
