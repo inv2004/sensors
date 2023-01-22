@@ -66,6 +66,12 @@ iterator features*(chip: SensorChip): SensorFeature =
       break
     yield SensorFeature(feature: feature, chip: chip)
 
+iterator features*(chip: SensorChip, kind: SensorFeatureKind): SensorFeature =
+  for feature in chip.features():
+    if feature.kind != kind:
+      continue
+    yield feature
+
 iterator items*(chip: SensorChip): SensorFeature =
   for f in chip.features(): yield f
 
@@ -99,15 +105,25 @@ proc name*(subfeature: SensorSubfeature): cstring =
 proc kind*(subfeature: SensorSubFeature): SensorSubfeatureKind =
   subfeature.subfeature.kind
 
+iterator subfeatures*(feature: SensorFeature,
+    kind: SensorSubfeatureKind): SensorSubfeature =
+  for subfeature in feature.subfeatures():
+    if subfeature.kind != kind:
+      continue
+    yield subfeature
+
 proc value*(subfeature: SensorSubfeature): float64 =
   if sensors_get_value(subfeature.chip, subfeature.subfeature.number, result) < 0:
     raise newException(ValueError, "sensor value failed")
 
-proc cpuTemp*(): float64 =
-  chipWithPrefix("coretemp").feature(FeatureTemp).subfeature(
-      SubfeatureTempInput).value
+proc cpuMaxTemp*(): float64 =
+  for feature in chipWithPrefix("coretemp").features(FeatureTemp):
+    let tmp = feature.subfeature(SubfeatureTempInput).value
+    if tmp > result:
+      result = tmp
 
-proc nvmeTemp*(): float64 =
-  chipWithPrefix("nvme").feature(FeatureTemp).subfeature(
-      SubfeatureTempInput).value
-
+proc nvmeMaxTemp*(): float64 =
+  for feature in chipWithPrefix("nvme").features(FeatureTemp):
+    let tmp = feature.subfeature(SubfeatureTempInput).value
+    if tmp > result:
+      result = tmp
