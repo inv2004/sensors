@@ -1,7 +1,3 @@
-import std/dynlib
-
-const libSensorsPattern = "libsensors.(so|so.5)"
-
 type
   Bus* = object
     typ*, nr*: int16
@@ -94,35 +90,65 @@ type
     mapping*: int32
     flags*: uint32
 
-var sensors_init*: proc(p: typeof(nil)): int {.cdecl.}
-var sensors_get_detected_chips*: proc(p: SensorChip,
-    nr: var int): SensorChip {.cdecl.}
-var sensors_snprintf_chip_name*: proc(buf: pointer, size: int,
-    chip: SensorChip): int {.cdecl.}
-var sensors_get_features*: proc(chip: SensorChip,
-    fnr: var int): SensorFeaturePtr {.cdecl.}
-var sensors_get_label*: proc(chip: SensorChip,
-    feature: SensorFeaturePtr): cstring {.cdecl.}
-var sensors_get_subfeature*: proc(chip: SensorChip, feature: SensorFeaturePtr,
-    kind: SensorSubfeatureKind): SensorSubfeaturePtr {.cdecl.}
-var sensors_get_all_subfeatures*: proc(chip: SensorChip,
-    feature: SensorFeaturePtr, nr: var int): SensorSubfeaturePtr {.cdecl.}
-var sensors_get_value*: proc(chip: SensorChip, nr: int,
-    value: var float64): int {.cdecl.}
+const staticSensorsPath {.strdefine.}: string = ""
+
+when staticSensorsPath != "":
+  {.passL: "-L"&staticSensorsPath.}
+  {.passL: "-lsensors".}
+
+  proc sensors_init*(p: typeof(nil)): int {.importc.}
+  proc sensors_get_detected_chips*(p: SensorChip,
+      nr: var int): SensorChip {.importc.}
+  proc sensors_snprintf_chip_name*(buf: pointer, size: int,
+      chip: SensorChip): int {.importc.}
+  proc sensors_get_features*(chip: SensorChip,
+      fnr: var int): SensorFeaturePtr {.importc.}
+  proc sensors_get_label*(chip: SensorChip,
+      feature: SensorFeaturePtr): cstring {.importc.}
+  proc sensors_get_subfeature*(chip: SensorChip, feature: SensorFeaturePtr,
+      kind: SensorSubfeatureKind): SensorSubfeaturePtr {.importc.}
+  proc sensors_get_all_subfeatures*(chip: SensorChip,
+      feature: SensorFeaturePtr, nr: var int): SensorSubfeaturePtr {.importc.}
+  proc sensors_get_value*(chip: SensorChip, nr: int,
+      value: var float64): int {.importc.}
+else:
+  import std/dynlib
+
+  const libSensorsPattern = "libsensors.(so|so.5)"
+
+  var sensors_init*: proc(p: typeof(nil)): int {.cdecl.}
+  var sensors_get_detected_chips*: proc(p: SensorChip,
+      nr: var int): SensorChip {.cdecl.}
+  var sensors_snprintf_chip_name*: proc(buf: pointer, size: int,
+      chip: SensorChip): int {.cdecl.}
+  var sensors_get_features*: proc(chip: SensorChip,
+      fnr: var int): SensorFeaturePtr {.cdecl.}
+  var sensors_get_label*: proc(chip: SensorChip,
+      feature: SensorFeaturePtr): cstring {.cdecl.}
+  var sensors_get_subfeature*: proc(chip: SensorChip, feature: SensorFeaturePtr,
+      kind: SensorSubfeatureKind): SensorSubfeaturePtr {.cdecl.}
+  var sensors_get_all_subfeatures*: proc(chip: SensorChip,
+      feature: SensorFeaturePtr, nr: var int): SensorSubfeaturePtr {.cdecl.}
+  var sensors_get_value*: proc(chip: SensorChip, nr: int,
+      value: var float64): int {.cdecl.}
 
 template setProc(name: untyped) =
   name = cast[typeof(name)](lib.symAddr(name.astToStr))
   doAssert name != nil
 
 proc initLib*() =
-  let lib = loadLibPattern(libSensorsPattern)
-  if lib == nil:
-    raise newException(LibraryError, libSensorsPattern)
-  setProc(sensors_init)
-  setProc(sensors_get_detected_chips)
-  setProc(sensors_snprintf_chip_name)
-  setProc(sensors_get_features)
-  setProc(sensors_get_label)
-  setProc(sensors_get_subfeature)
-  setProc(sensors_get_all_subfeatures)
-  setProc(sensors_get_value)
+  when staticSensorsPath != "":
+    discard
+  else:
+    let lib = loadLibPattern(libSensorsPattern)
+    if lib == nil:
+      raise newException(LibraryError, libSensorsPattern)
+    setProc(sensors_init)
+    setProc(sensors_get_detected_chips)
+    setProc(sensors_snprintf_chip_name)
+    setProc(sensors_get_features)
+    setProc(sensors_get_label)
+    setProc(sensors_get_subfeature)
+    setProc(sensors_get_all_subfeatures)
+    setProc(sensors_get_value)
+

@@ -1,10 +1,10 @@
 # Package
 
-version       = "0.2.3"
-author        = "inv2004"
-description   = "libsensors wrapper"
-license       = "MIT"
-srcDir        = "src"
+version = "0.2.4"
+author = "inv2004"
+description = "libsensors wrapper"
+license = "MIT"
+srcDir = "src"
 
 
 # Dependencies
